@@ -1,9 +1,10 @@
 streamlit
 google-generativeai
-spotipy
+ytmusicapi
 plotly
 python-dotenv
 fastapi
 uvicorn
 requests
 pydantic
+pandas

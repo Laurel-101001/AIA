@@ -11,6 +11,67 @@ import requests
 
 API_BASE_URL = "http://127.0.0.1:8000"
 
+def inject_custom_css():
+    """注入自訂 CSS，改變背景、按鈕、字體等外觀"""
+    custom_css = """
+    <style>
+    /* 載入 Google Fonts: Outfit */
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+
+    /* 全局背景色與文字顏色 */
+    [data-testid="stAppViewContainer"] {
+        background: linear-gradient(135deg, #0e1117 0%, #1a1a2e 100%);
+        color: #e0e0e0;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    /* 側邊欄背景 */
+    [data-testid="stSidebar"] {
+        background-color: #161b22;
+    }
+
+    /* 標題樣式 */
+    h1, h2, h3, h4, h5, h6 {
+        color: #ff6f61 !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 800 !important;
+    }
+
+    /* 主要按鈕 (Submit) */
+    button[data-testid="stBaseButton-primary"] {
+        background: linear-gradient(90deg, #ff6f61, #ff9068);
+        color: white;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        font-size: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    button[data-testid="stBaseButton-primary"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(255, 111, 97, 0.4);
+    }
+
+    /* Expander 標題 */
+    .streamlit-expanderHeader {
+        color: #ff9068 !important;
+        font-weight: 600 !important;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+    }
+
+    /* 圖表外框 */
+    [data-testid="stPlotlyChart"] {
+        border: 1px solid rgba(255, 111, 97, 0.3);
+        border-radius: 12px;
+        padding: 8px;
+        background-color: rgba(0, 0, 0, 0.2);
+    }
+    </style>
+    """
+    st.markdown(custom_css, unsafe_allow_html=True)
+
+
 def make_radar_chart(track: dict) -> go.Figure:
     """為單首歌曲繪製 valence / energy / acousticness 雷達圖。"""
     categories = ["Valence（愉悅）", "Energy（能量）", "Acousticness（原聲）"]
@@ -30,17 +91,27 @@ def make_radar_chart(track: dict) -> go.Figure:
             )
         ]
     )
+    # 將圖表的背景調成透明，以符合我們酷炫的暗黑背景
     fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
+        polar=dict(
+            radialaxis=dict(visible=True, range=[0, 1], gridcolor="rgba(255,255,255,0.2)"),
+            bgcolor="rgba(0,0,0,0)"
+        ),
         showlegend=False,
         margin=dict(l=40, r=40, t=30, b=30),
         height=280,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e0e0e0")
     )
     return fig
 
 
 def main():
     st.set_page_config(page_title="AI 情境音樂推薦", page_icon="🎵", layout="wide")
+    
+    # 在載入頁面時立刻注入 CSS
+    inject_custom_css()
 
     st.title("🎵 AI 情境音樂推薦系統：你說心情，我懂你")
     st.caption("這是一個純前端介面，透過 API 呼叫後端引擎為您挑歌。")
@@ -90,12 +161,10 @@ def main():
                                 with col_info:
                                     st.markdown(f"### {idx + 1}. {track['name']}")
                                     st.markdown(f"**🎤 {track['artists']}**")
-                                    if track.get("spotify_url"):
+                                    if track.get("spotify_embed"):
+                                        st.components.v1.iframe(track["spotify_embed"], height=80)
+                                    elif track.get("spotify_url"):
                                         st.markdown(f"[🔗 在 Spotify 收聽]({track['spotify_url']})")
-                                    if track.get("preview_url"):
-                                        st.audio(track["preview_url"], format="audio/mp3")
-                                    else:
-                                        st.info("此歌曲暫無 30 秒試聽片段")
 
                                 with col_chart:
                                     fig = make_radar_chart(track)
